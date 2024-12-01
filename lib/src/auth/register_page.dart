@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'login_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
+
+import 'login_page.dart'; // Asegúrate de tener esta página implementada
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -16,6 +20,15 @@ class _RegisterPageState extends State<RegisterPage> {
     "Otra"
   ];
   String? selectedArea; // Área seleccionada (si es doctor)
+
+  // Controladores de texto
+  final TextEditingController _rutController = TextEditingController();
+  final TextEditingController _nombreController = TextEditingController();
+  final TextEditingController _apellidoController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isLoading = false; // Indicador de carga
 
   @override
   Widget build(BuildContext context) {
@@ -63,13 +76,15 @@ class _RegisterPageState extends State<RegisterPage> {
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 24),
-                    _buildTextField("RUT"),
+                    _buildTextField("RUT", controller: _rutController),
                     SizedBox(height: 16),
-                    _buildTextField("Nombre"),
+                    _buildTextField("Nombre", controller: _nombreController),
                     SizedBox(height: 16),
-                    _buildTextField("Apellido"),
+                    _buildTextField("Apellido", controller: _apellidoController),
                     SizedBox(height: 16),
-                    _buildTextField("Correo Electrónico"),
+                    _buildTextField("Correo Electrónico", controller: _emailController),
+                    SizedBox(height: 16),
+                    _buildTextField("Contraseña", controller: _passwordController, isPassword: true),
                     SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       value: userType,
@@ -120,32 +135,33 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ],
                     SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildButton(
-                          "Iniciar Sesión",
-                          Colors.blue[600]!,
-                          Colors.white,
-                          () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => LoginPage(),
-                              ),
-                            );
-                          },
-                        ),
-                        _buildButton(
-                          "Registrar",
-                          Colors.blue[800]!,
-                          Colors.white,
-                          () {
-                            print("Registro enviado");
-                          },
-                        ),
-                      ],
-                    ),
+                    if (_isLoading)
+                      CircularProgressIndicator()
+                    else
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildButton(
+                            "Iniciar Sesión",
+                            Colors.blue[600]!,
+                            Colors.white,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => LoginPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          _buildButton(
+                            "Registrar",
+                            Colors.blue[800]!,
+                            Colors.white,
+                            () => _registerUser(),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -156,8 +172,11 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildTextField(String label) {
+  Widget _buildTextField(String label,
+      {TextEditingController? controller, bool isPassword = false}) {
     return TextField(
+      controller: controller,
+      obscureText: isPassword,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.blue[800]),
@@ -169,6 +188,11 @@ class _RegisterPageState extends State<RegisterPage> {
           borderSide: BorderSide(color: Colors.blue[800]!, width: 2),
         ),
       ),
+      keyboardType: TextInputType.number,
+      inputFormatters: label == "RUT" ? [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(9), // Limitar a 9 dígitos
+      ] : [],
     );
   }
 
@@ -192,5 +216,48 @@ class _RegisterPageState extends State<RegisterPage> {
         elevation: 8,
       ),
     );
+  }
+
+  Future<void> _registerUser() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Crear usuario en Firebase Authentication
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Guardar datos en Firestore, incluyendo el tipo de usuario (userType)
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        'rut': _rutController.text.trim(),
+        'nombre': _nombreController.text.trim(),
+        'apellido': _apellidoController.text.trim(),
+        'tipo': userType, // Tipo de usuario ("Usuario" o "Doctor")
+        'especializacion': selectedArea ?? "", // Área de especialización si es doctor
+        'email': _emailController.text.trim(),
+        'created_at': Timestamp.now(),
+      });
+
+      // Mostrar éxito y redirigir al login
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("¡Registro exitoso!")),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
+    } catch (e) {
+      // Mostrar error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error al registrar: $e")),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 }

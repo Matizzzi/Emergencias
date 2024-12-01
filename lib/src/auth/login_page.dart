@@ -1,7 +1,83 @@
 import 'package:flutter/material.dart';
-import 'register_page.dart'; // Asegúrate de importar la página de registro
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:trauma/screens/home_page.dart';  // Página de usuario común
+import 'package:trauma/screens/home_doctor_page.dart';
+import 'register_page.dart'; // Ruta relativa correcta a la ubicación del archivo
+// Página de registro
+class LoginPage extends StatefulWidget {
+  @override
+  _LoginPageState createState() => _LoginPageState();
+}
 
-class LoginPage extends StatelessWidget {
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Función para iniciar sesión con Firebase Authentication
+ Future<void> signInWithEmailPassword() async {
+  String email = emailController.text.trim();
+  String password = passwordController.text.trim();
+
+  try {
+    UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    User? user = userCredential.user;
+
+    if (user != null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      // Verifica que el documento y sus datos no sean nulos
+      final data = userDoc.data() as Map<String, dynamic>?;
+
+      if (data != null && data.containsKey('tipo')) {
+        String role = data['tipo'];
+
+        if (role == 'doctor') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomeDoctorPage()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomePage(userName: '',)),
+          );
+        }
+      } else {
+        print('El documento no tiene el campo "tipo" o los datos son nulos');
+      }
+    }
+  } catch (e) {
+    print('Error: $e');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Error"),
+        content: Text("Correo electrónico o contraseña incorrectos"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text("Cerrar"),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -13,8 +89,8 @@ class LoginPage extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.blue.withOpacity(0.5), // Color más claro
-                  Colors.white.withOpacity(0.8) // Color más transparente
+                  Colors.blue.withOpacity(0.5),
+                  Colors.white.withOpacity(0.8),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -27,7 +103,7 @@ class LoginPage extends StatelessWidget {
                   width: isDesktop ? 500 : double.infinity,
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8), // Fondo translúcido
+                    color: Colors.white.withOpacity(0.8),
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
@@ -41,7 +117,6 @@ class LoginPage extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Título
                       Text(
                         "Iniciar Sesión",
                         style: TextStyle(
@@ -53,8 +128,8 @@ class LoginPage extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                       SizedBox(height: 24),
-                      // Campo de correo electrónico
                       TextField(
+                        controller: emailController,
                         decoration: InputDecoration(
                           labelText: "Correo Electrónico",
                           labelStyle: TextStyle(color: Colors.blue[800]),
@@ -69,8 +144,8 @@ class LoginPage extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 16),
-                      // Campo de contraseña
                       TextField(
+                        controller: passwordController,
                         decoration: InputDecoration(
                           labelText: "Contraseña",
                           labelStyle: TextStyle(color: Colors.blue[800]),
@@ -86,15 +161,12 @@ class LoginPage extends StatelessWidget {
                         obscureText: true,
                       ),
                       SizedBox(height: 32),
-                      // Botón de iniciar sesión
                       ElevatedButton(
-                        onPressed: () {
-                          print("Iniciar sesión");
-                        },
+                        onPressed: signInWithEmailPassword,
                         child: Text(
                           "Iniciar Sesión",
                           style: TextStyle(
-                            color: Colors.white, // Texto visible
+                            color: Colors.white,
                             fontSize: isDesktop ? 18 : 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -109,7 +181,6 @@ class LoginPage extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 16),
-                      // Botón para registrarse
                       TextButton(
                         onPressed: () {
                           Navigator.push(
@@ -127,15 +198,14 @@ class LoginPage extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 16),
-                      // Botón de volver
                       OutlinedButton(
                         onPressed: () {
-                          Navigator.pop(context); // Vuelve a la pantalla anterior
+                          Navigator.pop(context);
                         },
                         child: Text(
                           "Volver",
                           style: TextStyle(
-                            color: Colors.blue[800], // Texto visible
+                            color: Colors.blue[800],
                             fontSize: isDesktop ? 16 : 14,
                             fontWeight: FontWeight.w600,
                           ),
