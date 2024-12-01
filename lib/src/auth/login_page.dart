@@ -13,16 +13,12 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  // Función para iniciar sesión con Firebase Authentication
- Future<void> signInWithEmailPassword() async {
+Future<void> signInWithEmailPassword() async {
   String email = emailController.text.trim();
   String password = passwordController.text.trim();
 
   try {
-    UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+    UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
@@ -34,47 +30,61 @@ class _LoginPageState extends State<LoginPage> {
           .doc(user.uid)
           .get();
 
-      // Verifica que el documento y sus datos no sean nulos
-      final data = userDoc.data() as Map<String, dynamic>?;
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>?;
 
-      if (data != null && data.containsKey('tipo')) {
-        String role = data['tipo'];
-
-        if (role == 'doctor') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomeDoctorPage()),
-          );
+        if (data != null && data.isNotEmpty) {
+          String? role = data['tipo']?.toString().toLowerCase();
+          
+          if (role == 'doctor') {
+            String? especializacion = data['especializacion'] as String?;
+            if (especializacion != null && especializacion.isNotEmpty) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => HomeDoctorPage()),
+              );
+            } else {
+              _showErrorDialog("El doctor no tiene especialización definida.");
+            }
+          } else if (role == 'usuario') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => HomePage(userName: user.email ?? 'Usuario')),
+            );
+          } else {
+            _showErrorDialog("Rol desconocido. Contacta al administrador.");
+          }
         } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomePage(userName: '',)),
-          );
+          _showErrorDialog("Los datos del usuario están vacíos.");
         }
       } else {
-        print('El documento no tiene el campo "tipo" o los datos son nulos');
+        _showErrorDialog("No se encontró el usuario en la base de datos.");
       }
     }
   } catch (e) {
     print('Error: $e');
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Error"),
-        content: Text("Correo electrónico o contraseña incorrectos"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text("Cerrar"),
-          ),
-        ],
-      ),
-    );
+    _showErrorDialog("Correo electrónico o contraseña incorrectos.");
   }
 }
 
+// Función para mostrar un diálogo de error
+void _showErrorDialog(String message) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text("Error"),
+      content: Text(message),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text("Cerrar"),
+        ),
+      ],
+    ),
+  );
+}
 
 
 
