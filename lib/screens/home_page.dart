@@ -1,49 +1,59 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:trauma/components/dates/page_dates.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key, required String userName}) : super(key: key);
 
   @override
-  _HomePageState createState() => _HomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  String userName = '';
+  String userFullName = "";
 
   @override
   void initState() {
     super.initState();
-    _loadUserName();
+    _loadUserFullName();
   }
 
-  // Cargar el nombre del usuario desde Firestore
-  Future<void> _loadUserName() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      String name = await getUserName(user.uid);
-      setState(() {
-        userName = name;
-      });
-    }
-  }
-
-  // Método para obtener el nombre del usuario desde Firestore
-  Future<String> getUserName(String uid) async {
+  Future<void> _loadUserFullName() async {
     try {
-      // Obtén el documento del usuario en Firestore
-      DocumentSnapshot snapshot = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      
-      // Verifica si el documento existe y devuelve el nombre
-      if (snapshot.exists) {
-        return snapshot['name'] ?? 'Sin nombre'; // Usa 'name' o un valor por defecto
-      } else {
-        return 'Usuario no encontrado';
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Consultar datos del usuario en Firestore
+        final docSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (docSnapshot.exists) {
+          final data = docSnapshot.data();
+          final String? nombre = data?['nombre'];
+          final String? apellido = data?['apellido'];
+
+          if (nombre != null && apellido != null) {
+            setState(() {
+              userFullName = "$nombre $apellido";
+            });
+          } else {
+            setState(() {
+              userFullName = "Nombre no disponible";
+            });
+          }
+        } else {
+          setState(() {
+            userFullName = "Usuario no encontrado";
+          });
+        }
       }
     } catch (e) {
       print("Error al obtener el nombre del usuario: $e");
-      return 'Error';
+      setState(() {
+        userFullName = "Error";
+      });
     }
   }
 
@@ -52,15 +62,10 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue[800],
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [],
-            ),
-          ),
-        ],
+        title: const Text(
+          "BIENVENIDO",
+          style: TextStyle(fontSize: 20),
+        ),
       ),
       body: Row(
         children: [
@@ -74,16 +79,18 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 20),
                 Expanded(
                   child: ListView(
-                    children: const [
+                    children: [
                       SidebarButton(texto: "MIS DATOS", icono: Icons.person),
-                      SidebarButton(texto: "MIS ATENCIONES", icono: Icons.medical_services),
+                      SidebarButton(
+                          texto: "MIS ATENCIONES", icono: Icons.medical_services),
                       SidebarButton(texto: "MIS EXÁMENES", icono: Icons.science),
                       SidebarButton(texto: "MIS IMÁGENES", icono: Icons.image),
                     ],
                   ),
                 ),
                 const SizedBox(height: 10),
-                const SidebarButton(texto: "CERRAR SESIÓN", icono: Icons.exit_to_app),
+                SidebarButton(
+                    texto: "CERRAR SESIÓN", icono: Icons.exit_to_app),
               ],
             ),
           ),
@@ -96,10 +103,13 @@ class _HomePageState extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Personalized Welcome Message
+                  // Personalized Welcome Message (Only here)
                   Text(
-                    userName.isNotEmpty ? "BIENVENIDO $userName" : "Cargando...",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    userFullName.isNotEmpty
+                        ? "Bienvenido $userFullName"
+                        : "Cargando...",
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 30),
                   Expanded(
@@ -107,11 +117,16 @@ class _HomePageState extends State<HomePage> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 20,
                       mainAxisSpacing: 20,
-                      children: const [
+                      children: [
                         MainMenuButton(texto: "MIS DATOS", icono: Icons.person),
-                        MainMenuButton(texto: "MIS EXÁMENES DE LABORATORIO", icono: Icons.science),
-                        MainMenuButton(texto: "MIS IMÁGENES", icono: Icons.image),
-                        MainMenuButton(texto: "MIS ATENCIONES", icono: Icons.medical_services),
+                        MainMenuButton(
+                            texto: "MIS EXÁMENES DE LABORATORIO",
+                            icono: Icons.science),
+                        MainMenuButton(
+                            texto: "MIS IMÁGENES", icono: Icons.image),
+                        MainMenuButton(
+                            texto: "MIS ATENCIONES",
+                            icono: Icons.medical_services),
                       ],
                     ),
                   ),
@@ -130,16 +145,34 @@ class SidebarButton extends StatelessWidget {
   final String texto;
   final IconData icono;
 
-  const SidebarButton({required this.texto, required this.icono});
+  const SidebarButton({Key? key, required this.texto, required this.icono})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icono, color: Colors.white),
-      title: Text(texto, style: const TextStyle(color: Colors.white)),
+    return InkWell(
       onTap: () {
-        // Acción al hacer clic
+        if (texto == "MIS DATOS") {
+        Navigator.push(
+  context,
+  MaterialPageRoute(builder: (context) => const UserDetailsPage()),
+);
+        }
+        // Puedes agregar lógica para otros botones aquí si lo necesitas
       },
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          children: [
+            Icon(icono, color: Colors.white),
+            const SizedBox(width: 10),
+            Text(
+              texto,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -149,32 +182,39 @@ class MainMenuButton extends StatelessWidget {
   final String texto;
   final IconData icono;
 
-  const MainMenuButton({required this.texto, required this.icono});
+  const MainMenuButton({Key? key, required this.texto, required this.icono})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blue[50],
-        padding: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      onPressed: () {
-        // Acción al hacer clic
+    return InkWell(
+      onTap: () {
+        if (texto == "MIS DATOS") {
+        Navigator.push(
+  context,
+  MaterialPageRoute(builder: (context) => const UserDetailsPage()),
+);
+        }
+        // Lógica adicional para otros botones
       },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icono, size: 40, color: Colors.blue[700]),
-          const SizedBox(height: 10),
-          Text(
-            texto,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: Colors.black),
-          ),
-        ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.blue[700],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icono, size: 40, color: Colors.white),
+            const SizedBox(height: 10),
+            Text(
+              texto,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ],
+        ),
       ),
     );
   }

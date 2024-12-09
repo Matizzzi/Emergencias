@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 
-import 'login_page.dart'; // Asegúrate de tener esta página implementada
+import 'login_page.dart'; // Asegúrate de implementar esta página
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -11,7 +11,7 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  String? userType = "Usuario"; // Por defecto, selecciona "Usuario"
+  String userType = "Usuario"; // Por defecto, "Usuario"
   final List<String> doctorAreas = [
     "Cardiología",
     "Pediatría",
@@ -19,7 +19,7 @@ class _RegisterPageState extends State<RegisterPage> {
     "Traumatología",
     "Otra"
   ];
-  String? selectedArea; // Área seleccionada (si es doctor)
+  String? selectedArea;
 
   // Controladores de texto
   final TextEditingController _rutController = TextEditingController();
@@ -28,220 +28,31 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  bool _isLoading = false; // Indicador de carga
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.blue.withOpacity(0.5),
-              Colors.white.withOpacity(0.8),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Container(
-                width: MediaQuery.of(context).size.width > 600 ? 500 : double.infinity,
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 15,
-                      offset: Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Registro de Cuenta",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue[800],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 24),
-                    _buildTextField("RUT", controller: _rutController),
-                    SizedBox(height: 16),
-                    _buildTextField("Nombre", controller: _nombreController),
-                    SizedBox(height: 16),
-                    _buildTextField("Apellido", controller: _apellidoController),
-                    SizedBox(height: 16),
-                    _buildTextField("Correo Electrónico", controller: _emailController),
-                    SizedBox(height: 16),
-                    _buildTextField("Contraseña", controller: _passwordController, isPassword: true),
-                    SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: userType,
-                      onChanged: (value) {
-                        setState(() {
-                          userType = value;
-                          if (value == "Usuario") {
-                            selectedArea = null; // Limpia el área si no es doctor
-                          }
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: "Tipo de Usuario",
-                        labelStyle: TextStyle(color: Colors.blue[800]),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      items: ["Usuario", "Doctor"]
-                          .map((type) => DropdownMenuItem(
-                                value: type,
-                                child: Text(type),
-                              ))
-                          .toList(),
-                    ),
-                    if (userType == "Doctor") ...[
-                      SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: selectedArea,
-                        onChanged: (value) {
-                          setState(() {
-                            selectedArea = value;
-                          });
-                        },
-                        decoration: InputDecoration(
-                          labelText: "Área de Especialización",
-                          labelStyle: TextStyle(color: Colors.blue[800]),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        items: doctorAreas
-                            .map((area) => DropdownMenuItem(
-                                  value: area,
-                                  child: Text(area),
-                                ))
-                            .toList(),
-                      ),
-                    ],
-                    SizedBox(height: 32),
-                    if (_isLoading)
-                      CircularProgressIndicator()
-                    else
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildButton(
-                            "Iniciar Sesión",
-                            Colors.blue[600]!,
-                            Colors.white,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LoginPage(),
-                                ),
-                              );
-                            },
-                          ),
-                          _buildButton(
-                            "Registrar",
-                            Colors.blue[800]!,
-                            Colors.white,
-                            () => _registerUser(),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label,
-      {TextEditingController? controller, bool isPassword = false}) {
-    return TextField(
-      controller: controller,
-      obscureText: isPassword,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.blue[800]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue[800]!, width: 2),
-        ),
-      ),
-      keyboardType: TextInputType.number,
-      inputFormatters: label == "RUT" ? [
-        FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(9), // Limitar a 9 dígitos
-      ] : [],
-    );
-  }
-
-  Widget _buildButton(String text, Color backgroundColor, Color textColor, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: textColor,
-        ),
-      ),
-      style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        backgroundColor: backgroundColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
-        elevation: 8,
-      ),
-    );
-  }
+  bool _isLoading = false;
 
   Future<void> _registerUser() async {
+    if (!_validateFields()) return;
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Crear usuario en Firebase Authentication
       UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // Guardar datos en Firestore, incluyendo el tipo de usuario (userType)
       await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
         'rut': _rutController.text.trim(),
         'nombre': _nombreController.text.trim(),
         'apellido': _apellidoController.text.trim(),
-        'tipo': userType, // Tipo de usuario ("Usuario" o "Doctor")
-        'especializacion': selectedArea ?? "", // Área de especialización si es doctor
+        'tipo': userType,
+        'especializacion': userType == "Doctor" ? selectedArea ?? "" : "",
         'email': _emailController.text.trim(),
         'created_at': Timestamp.now(),
       });
 
-      // Mostrar éxito y redirigir al login
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("¡Registro exitoso!")),
       );
@@ -250,14 +61,139 @@ class _RegisterPageState extends State<RegisterPage> {
         MaterialPageRoute(builder: (context) => LoginPage()),
       );
     } catch (e) {
-      // Mostrar error
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error al registrar: $e")),
+        SnackBar(content: Text("Error al registrar: ${e.toString()}")),
       );
     } finally {
       setState(() {
         _isLoading = false;
       });
     }
+  }
+
+  bool _validateFields() {
+    if (_rutController.text.isEmpty ||
+        _nombreController.text.isEmpty ||
+        _apellidoController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Por favor, completa todos los campos.")),
+      );
+      return false;
+    }
+    if (userType == "Doctor" && (selectedArea == null || selectedArea!.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Por favor, selecciona un área de especialización.")),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  Widget _buildTextField(String label,
+      {TextEditingController? controller, bool isPassword = false, TextInputType keyboardType = TextInputType.text}) {
+    return TextField(
+      controller: controller,
+      obscureText: isPassword,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.blue[800]),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue[800]!, width: 2),
+        ),
+      ),
+      keyboardType: keyboardType,
+      inputFormatters: label == "RUT"
+          ? [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(9),
+            ]
+          : [],
+    );
+  }
+
+  Widget _buildUserTypeDropdown() {
+    return DropdownButtonFormField<String>(
+      value: userType,
+      items: ["Usuario", "Doctor"]
+          .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+          .toList(),
+      onChanged: (value) => setState(() {
+        userType = value!;
+        selectedArea = null; // Reiniciar área si cambia el tipo
+      }),
+      decoration: InputDecoration(
+        labelText: "Tipo de Usuario",
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Widget _buildDoctorAreaDropdown() {
+    if (userType != "Doctor") return SizedBox.shrink();
+    return DropdownButtonFormField<String>(
+      value: selectedArea,
+      items: doctorAreas
+          .map((area) => DropdownMenuItem(value: area, child: Text(area)))
+          .toList(),
+      onChanged: (value) => setState(() {
+        selectedArea = value!;
+      }),
+      decoration: InputDecoration(
+        labelText: "Área de Especialización",
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Widget _buildRegisterButton() {
+    return ElevatedButton(
+      onPressed: _registerUser,
+      child: _isLoading
+          ? CircularProgressIndicator(color: Colors.white)
+          : Text("Registrar"),
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        backgroundColor: Colors.blue[800],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Registro de Usuario"),
+        backgroundColor: Colors.blue[800],
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              _buildTextField("RUT", controller: _rutController, keyboardType: TextInputType.number),
+              SizedBox(height: 16),
+              _buildTextField("Nombre", controller: _nombreController),
+              SizedBox(height: 16),
+              _buildTextField("Apellido", controller: _apellidoController),
+              SizedBox(height: 16),
+              _buildTextField("Correo Electrónico", controller: _emailController, keyboardType: TextInputType.emailAddress),
+              SizedBox(height: 16),
+              _buildTextField("Contraseña", controller: _passwordController, isPassword: true),
+              SizedBox(height: 16),
+              _buildUserTypeDropdown(),
+              SizedBox(height: 16),
+              _buildDoctorAreaDropdown(),
+              SizedBox(height: 32),
+              _buildRegisterButton(),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

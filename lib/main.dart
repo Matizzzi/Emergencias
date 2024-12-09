@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'src/auth/login_page.dart';
 import 'firebase_options.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'screens/chat_page.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -31,30 +33,57 @@ class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue[900]!, Colors.blue[400]!],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildHeader(context),
-                  _buildWelcomeSection(context),
-                  SizedBox(height: 30),
-                  _buildHospitalInfoSection(context),  // Ensure this calls _hospitalCard correctly
-                  SizedBox(height: 30),
-                ],
-              ),
+      body: SingleChildScrollView(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue[900]!, Colors.blue[400]!],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
-          );
-        },
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeader(context),
+              _buildWelcomeSection(context),
+              SizedBox(height: 30),
+              _buildHospitalInfoSection(context),
+              SizedBox(height: 30),
+              _buildServicesSection(context),  // Nueva sección de servicios
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue[800]!, Colors.blue[600]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundImage: AssetImage('assets/logoMelipilla.png'),
+          ),
+          SizedBox(width: 10),
+          Text(
+            'Sistema Trauma',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -112,8 +141,10 @@ class WelcomePage extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 40),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    spacing: 20,
+                    runSpacing: 20,
+                    alignment: WrapAlignment.center,
                     children: [
                       _animatedButton(
                         context: context,
@@ -127,7 +158,6 @@ class WelcomePage extends StatelessWidget {
                           );
                         },
                       ),
-                      SizedBox(width: 20),
                       _animatedButton(
                         context: context,
                         text: "Registrarse",
@@ -137,30 +167,53 @@ class WelcomePage extends StatelessWidget {
                           print("Registrarse");
                         },
                       ),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  Animate(
-                    effects: [SlideEffect()],
-                    child: TextButton(
-                      onPressed: () {
-                        print("Explorar más");
-                      },
-                      child: Text(
-                        'Explorar más',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.blue[800],
-                          decoration: TextDecoration.underline,
-                        ),
+                      _animatedButton(
+                        context: context,
+                        text: "Emergencias",
+                        icon: Icons.warning,
+                        color: Colors.red[600]!,
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => ChatPage()),
+                          );
+                        },
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _animatedButton({
+    required BuildContext context,
+    required String text,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Animate(
+      effects: [ScaleEffect(), FadeEffect()],
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 22, color: Colors.white),
+        label: Text(
+          text,
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          backgroundColor: color,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+          elevation: 8,
+        ),
       ),
     );
   }
@@ -199,12 +252,12 @@ class WelcomePage extends StatelessWidget {
                 "assets/medico.png",
                 "Nuestros médicos y enfermeros están altamente capacitados para cualquier emergencia.",
               ),
-            _hospitalCard(
-  context,
-  "Atención 24/7",
-  "assets/atencion.png",  // Correct image path
-  "Ofrecemos atención médica las 24 horas del día, los 7 días de la semana.",
-),
+              _hospitalCard(
+                context,
+                "Atención 24/7",
+                "assets/atencion.png",
+                "Ofrecemos atención médica las 24 horas del día, los 7 días de la semana.",
+              ),
             ],
           ),
         ),
@@ -266,85 +319,72 @@ class WelcomePage extends StatelessWidget {
     );
   }
 
-  Widget _animatedButton({
-    required BuildContext context,
-    required String text,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return Animate(
-      effects: [ScaleEffect(), FadeEffect()],
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 22, color: Colors.white),
-        label: Text(
-          text,
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        style: ElevatedButton.styleFrom(
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          backgroundColor: color,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
+Widget _buildServicesSection(BuildContext context) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.center,  // Centrar el contenido
+      children: [
+        Text(
+          "Servicios en Línea",
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
-          elevation: 8,
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 40.0, vertical: 20.0),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue[800]!, Colors.blue[600]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MediaQuery.of(context).size.width > 800
-            ? MainAxisAlignment.spaceBetween
-            : MainAxisAlignment.center,
-        children: [
-          Row(
+        SizedBox(height: 20),
+        Center(  // Centrar la fila de servicios
+          child: Wrap(
+            spacing: 20,
+            runSpacing: 20,
+            alignment: WrapAlignment.center,
             children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundImage: AssetImage('assets/logoMelipilla.png'),
-              ),
-              SizedBox(width: 10),
+              _serviceCard("Urgencias", Icons.local_hospital, Colors.red[700]!),
+              _serviceCard("Consultas", Icons.medical_services, Colors.blue[600]!),
+              _serviceCard("Farmacia", Icons.local_pharmacy, Colors.green[600]!),
+              _serviceCard("Laboratorio", Icons.science, Colors.orange[600]!),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _serviceCard(String title, IconData icon, Color color) {
+  return GestureDetector(
+    onTap: () {
+      // Acción al tocar el servicio
+      print("$title tocado");
+    },
+    child: MouseRegion(
+      onEnter: (_) {
+        // Acción cuando el cursor pasa por encima (hover)
+        print('Hover sobre $title');
+      },
+      onExit: (_) {
+        // Acción cuando el cursor deja el área
+        print('Dejando hover sobre $title');
+      },
+      child: Card(
+        color: color,
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Icon(icon, size: 40, color: Colors.white),
+              SizedBox(height: 10),
               Text(
-                'Sistema Trauma',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+                title,
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
           ),
-          if (MediaQuery.of(context).size.width > 800)
-            Row(
-              children: [
-                TextButton(
-                  onPressed: () {},
-                  child: Text('Inicio', style: TextStyle(color: Colors.white)),
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: Text('Servicios', style: TextStyle(color: Colors.white)),
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: Text('Contacto', style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            ),
-        ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 }
