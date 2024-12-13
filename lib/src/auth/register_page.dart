@@ -11,12 +11,17 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  String userType = "Usuario"; // Por defecto, "Usuario"
   final List<String> doctorAreas = [
-    "Cardiología",
-    "Pediatría",
-    "Dermatología",
+    "Medicina de Emergencias",
     "Traumatología",
+    "Cardiología",
+    "Neurocirugía",
+    "Anestesiología",
+    "Pediatría de Emergencias",
+    "Medicina Intensiva",
+    "Obstetricia", 
+    "Psiquiatría de Emergencias", 
+    "Cirugía General de Emergencias", 
     "Otra"
   ];
   String? selectedArea;
@@ -47,8 +52,8 @@ class _RegisterPageState extends State<RegisterPage> {
         'rut': _rutController.text.trim(),
         'nombre': _nombreController.text.trim(),
         'apellido': _apellidoController.text.trim(),
-        'tipo': userType,
-        'especializacion': userType == "Doctor" ? selectedArea ?? "" : "",
+        'tipo': "Doctor", // Siempre será Doctor
+        'especializacion': selectedArea ?? "", // Especialización seleccionada
         'email': _emailController.text.trim(),
         'created_at': Timestamp.now(),
       });
@@ -82,7 +87,7 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       return false;
     }
-    if (userType == "Doctor" && (selectedArea == null || selectedArea!.isEmpty)) {
+    if (selectedArea == null || selectedArea!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Por favor, selecciona un área de especialización.")),
       );
@@ -115,25 +120,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildUserTypeDropdown() {
-    return DropdownButtonFormField<String>(
-      value: userType,
-      items: ["Usuario", "Doctor"]
-          .map((type) => DropdownMenuItem(value: type, child: Text(type)))
-          .toList(),
-      onChanged: (value) => setState(() {
-        userType = value!;
-        selectedArea = null; // Reiniciar área si cambia el tipo
-      }),
-      decoration: InputDecoration(
-        labelText: "Tipo de Usuario",
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
   Widget _buildDoctorAreaDropdown() {
-    if (userType != "Doctor") return SizedBox.shrink();
     return DropdownButtonFormField<String>(
       value: selectedArea,
       items: doctorAreas
@@ -167,7 +154,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Registro de Usuario"),
+        title: Text("Registro de Doctor"),
         backgroundColor: Colors.blue[800],
       ),
       body: SingleChildScrollView(
@@ -184,8 +171,6 @@ class _RegisterPageState extends State<RegisterPage> {
               _buildTextField("Correo Electrónico", controller: _emailController, keyboardType: TextInputType.emailAddress),
               SizedBox(height: 16),
               _buildTextField("Contraseña", controller: _passwordController, isPassword: true),
-              SizedBox(height: 16),
-              _buildUserTypeDropdown(),
               SizedBox(height: 16),
               _buildDoctorAreaDropdown(),
               SizedBox(height: 32),

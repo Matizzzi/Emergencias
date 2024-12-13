@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:trauma/screens/home_page.dart';  // Página de usuario común
+import 'package:trauma/screens/home_page.dart';
 import 'package:trauma/screens/home_doctor_page.dart';
-import 'register_page.dart'; // Ruta relativa correcta a la ubicación del archivo
-// Página de registro
+import 'package:trauma/src/auth/register_page.dart'; // Asegúrate de implementar esta página
+
 class LoginPage extends StatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
@@ -13,80 +13,153 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-Future<void> signInWithEmailPassword() async {
-  String email = emailController.text.trim();
-  String password = passwordController.text.trim();
 
-  try {
-    UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    User? user = userCredential.user;
+  Future<void> signInWithEmailPassword() async {
+    String email = emailController.text.trim();
+    String password = passwordController.text.trim();
 
-    if (user != null) {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      User? user = userCredential.user;
 
-      if (userDoc.exists) {
-        final data = userDoc.data() as Map<String, dynamic>?;
+      if (user != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
-        if (data != null && data.isNotEmpty) {
-          String? role = data['tipo']?.toString().toLowerCase();
-          
-          if (role == 'doctor') {
-            String? especializacion = data['especializacion'] as String?;
-            if (especializacion != null && especializacion.isNotEmpty) {
+        if (userDoc.exists) {
+          final data = userDoc.data() as Map<String, dynamic>?;
+
+          if (data != null && data.isNotEmpty) {
+            String? role = data['tipo']?.toString().toLowerCase();
+            
+            if (role == 'doctor') {
+              String? especializacion = data['especializacion'] as String?;
+              if (especializacion != null && especializacion.isNotEmpty) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => HomeDoctorPage()),
+                );
+              } else {
+                _showErrorDialog("El doctor no tiene especialización definida.");
+              }
+            } else if (role == 'usuario') {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => HomeDoctorPage()),
+                MaterialPageRoute(builder: (context) => HomePage(userName: user.email ?? 'Usuario')),
               );
             } else {
-              _showErrorDialog("El doctor no tiene especialización definida.");
+              _showErrorDialog("Rol desconocido. Contacta al administrador.");
             }
-          } else if (role == 'usuario') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => HomePage(userName: user.email ?? 'Usuario')),
-            );
           } else {
-            _showErrorDialog("Rol desconocido. Contacta al administrador.");
+            _showErrorDialog("Los datos del usuario están vacíos.");
           }
         } else {
-          _showErrorDialog("Los datos del usuario están vacíos.");
+          _showErrorDialog("No se encontró el usuario en la base de datos.");
         }
-      } else {
-        _showErrorDialog("No se encontró el usuario en la base de datos.");
       }
+    } catch (e) {
+      print('Error: $e');
+      _showErrorDialog("Correo electrónico o contraseña incorrectos.");
     }
-  } catch (e) {
-    print('Error: $e');
-    _showErrorDialog("Correo electrónico o contraseña incorrectos.");
   }
-}
 
-// Función para mostrar un diálogo de error
-void _showErrorDialog(String message) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text("Error"),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: Text("Cerrar"),
-        ),
-      ],
-    ),
-  );
-}
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Error"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text("Cerrar"),
+          ),
+        ],
+      ),
+    );
+  }
 
+  // Método para mostrar cuadro de diálogo para recuperación de contraseña
+  void _showPasswordResetDialog() {
+    final TextEditingController emailController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Recuperar Contraseña'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: emailController,
+                decoration: InputDecoration(
+                  labelText: "Correo Electrónico",
+                  prefixIcon: Icon(Icons.email),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("Cancelar"),
+            ),
+            TextButton(
+              onPressed: () async {
+                String email = emailController.text.trim();
+                if (email.isNotEmpty) {
+                  await _resetPassword(email);
+                  Navigator.of(context).pop();
+                } else {
+                  _showErrorDialog("Por favor ingresa un correo electrónico.");
+                }
+              },
+              child: Text("Enviar Enlace de Recuperación"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
+  // Método para enviar el enlace de recuperación de contraseña
+  Future<void> _resetPassword(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      _showSuccessDialog("Se ha enviado un enlace de recuperación al correo.");
+    } catch (e) {
+      print('Error: $e');
+      _showErrorDialog("Hubo un error al enviar el correo de recuperación.");
+    }
+  }
+
+  // Mostrar mensaje de éxito
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Éxito"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text("Cerrar"),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,8 +172,8 @@ void _showErrorDialog(String message) {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.blue.withOpacity(0.5),
-                  Colors.white.withOpacity(0.8),
+                  Colors.blue.shade700,
+                  Colors.purple.shade500,
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -113,7 +186,7 @@ void _showErrorDialog(String message) {
                   width: isDesktop ? 500 : double.infinity,
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
@@ -132,8 +205,7 @@ void _showErrorDialog(String message) {
                         style: TextStyle(
                           fontSize: isDesktop ? 28 : 22,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue[800],
-                          fontFamily: "Roboto",
+                          color: Colors.blue.shade800,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -142,15 +214,7 @@ void _showErrorDialog(String message) {
                         controller: emailController,
                         decoration: InputDecoration(
                           labelText: "Correo Electrónico",
-                          labelStyle: TextStyle(color: Colors.blue[800]),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.blue[800]!, width: 2),
-                          ),
-                          prefixIcon: Icon(Icons.email, color: Colors.blue[800]),
+                          prefixIcon: Icon(Icons.email, color: Colors.blue.shade800),
                         ),
                       ),
                       SizedBox(height: 16),
@@ -158,37 +222,45 @@ void _showErrorDialog(String message) {
                         controller: passwordController,
                         decoration: InputDecoration(
                           labelText: "Contraseña",
-                          labelStyle: TextStyle(color: Colors.blue[800]),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.blue[800]!, width: 2),
-                          ),
-                          prefixIcon: Icon(Icons.lock, color: Colors.blue[800]),
+                          prefixIcon: Icon(Icons.lock, color: Colors.blue.shade800),
                         ),
                         obscureText: true,
                       ),
                       SizedBox(height: 32),
-                      ElevatedButton(
-                        onPressed: signInWithEmailPassword,
-                        child: Text(
-                          "Iniciar Sesión",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isDesktop ? 18 : 16,
-                            fontWeight: FontWeight.bold,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade700,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                            ),
+                            onPressed: signInWithEmailPassword,
+                            child: Text(
+                              "Iniciar Sesión",
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
                           ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                          backgroundColor: Colors.blue[800],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Colors.blue.shade700),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: Text(
+                              "Volver",
+                              style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold),
+                            ),
                           ),
-                          elevation: 8,
-                        ),
+                        ],
                       ),
                       SizedBox(height: 16),
                       TextButton(
@@ -200,32 +272,17 @@ void _showErrorDialog(String message) {
                         },
                         child: Text(
                           "¿No tienes cuenta? Regístrate",
-                          style: TextStyle(
-                            color: Colors.blue[800],
-                            fontSize: isDesktop ? 16 : 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(decoration: TextDecoration.underline, color: Colors.blue.shade700),
                         ),
                       ),
-                      SizedBox(height: 16),
-                      OutlinedButton(
+                      // Agregar botón para recuperar contraseña
+                      TextButton(
                         onPressed: () {
-                          Navigator.pop(context);
+                          _showPasswordResetDialog();
                         },
                         child: Text(
-                          "Volver",
-                          style: TextStyle(
-                            color: Colors.blue[800],
-                            fontSize: isDesktop ? 16 : 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Colors.blue[800]!, width: 2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          padding: EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                          "¿Olvidaste tu contraseña?",
+                          style: TextStyle(decoration: TextDecoration.underline, color: Colors.blue.shade700),
                         ),
                       ),
                     ],
